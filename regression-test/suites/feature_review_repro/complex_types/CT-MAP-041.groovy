@@ -1,0 +1,4 @@
+suite("repro_ct_map_041") {
+    def r = sql "SELECT map_size(map('a',1,'b',2))"
+    assertEquals(2L, (r[0][0] as Number).longValue(), "CT-MAP-041: size=2; observed=${r}")
+}
