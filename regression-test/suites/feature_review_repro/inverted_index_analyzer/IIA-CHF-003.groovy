@@ -1,17 +1,16 @@
-// IIA-CHF-003 (SEV-1 #N1b): char_replace replacement='' (empty) 注入 NUL 字节
-// 验证：通过 tokenize() 直接观察 BE 分词器输出
+// IIA-CHF-003 (SEV-1 DORIS-25637 #N1b): char_replace replacement='' 应不注入 NUL 字节
+// Spec correct (建议)：empty replacement 应 (a) 删除匹配字符 → tokens ["abc"]，或 (b) FE 拒绝（length=1 + non-empty）
+// 当前 4.1: 注入 \0 字节 + english split → tokens ["a","b","c"] → FAIL = bug signal
 suite("repro_iia_chf_003") {
-    // parser=english + pattern='.' + replacement='' :  期望"删除 ." 但实际注入 \0 字节
     def r1 = sql """SELECT tokenize('a.b.c', '"parser"="english","char_filter_type"="char_replace","char_filter_pattern"=".","char_filter_replacement"=""')"""
     String s1 = r1[0][0].toString()
-    // 期望 spec 应为 ["abc"]（删除 .）；实际 \0 注入 + english split on non-alnum → ["a","b","c"]
-    boolean has_three = s1.contains('"token": "a"') && s1.contains('"token": "b"') && s1.contains('"token": "c"')
-    assertTrue(has_three, "IIA-CHF-003: SEV-1 #N1b reproduce — empty replacement injects NUL byte; result=${s1}")
+    // 期望（修复后）：empty replacement = delete → 单 token "abc"
+    assertTrue(s1.contains('"token": "abc"'),
+        "Empty char_filter_replacement MUST be either deleted (→ 'abc') or rejected by FE (DORIS-25637). Current: \\0 byte injected, tokens=['a','b','c']; result=${s1}")
 
-    // 同样配置 parser=none → char_filter 不应用（should_analyzer=false 时跳过）
+    // parser=none should_analyzer=false 时 char_filter 不应用 (这部分 correct)
     def r2 = sql """SELECT tokenize('a.b.c', '"parser"="none","char_filter_type"="char_replace","char_filter_pattern"=".","char_filter_replacement"=""')"""
     String s2 = r2[0][0].toString()
-    // parser=none 不分词 + char_filter 不应用 → 原文整字段
     assertTrue(s2.contains('"token": "a.b.c"'),
-               "IIA-CHF-003: parser=none should skip char_filter; result=${s2}")
+        "parser=none should skip char_filter (correct); result=${s2}")
 }
