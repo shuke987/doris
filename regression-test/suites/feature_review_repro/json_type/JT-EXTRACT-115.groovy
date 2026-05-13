@@ -1,8 +1,14 @@
-// JT-EXTRACT-115: jsonb_depth — 不存在则跳过
+// JT-EXTRACT-115 (HARD RULE): jsonb_depth — must work or clearly reject
 suite("repro_jt_extract_115") {
     boolean threw = false
-    try { sql "SELECT jsonb_depth(CAST('1' AS JSONB))" }
-    catch (Exception e) { threw = true }
-    // observation: jsonb_depth not registered on this branch
-    assertNotNull(threw, "JT-EXTRACT-115 obs; threw=${threw}")
+    def r = null
+    String err = ""
+    try { r = sql "SELECT jsonb_depth(CAST('1' AS JSONB))" }
+    catch (Exception e) { threw = true; err = e.message ?: "" }
+    if (!threw) {
+        assertNotNull(r[0][0], "jsonb_depth on scalar returns >=1; r=${r}")
+    } else {
+        assertTrue(err.toLowerCase().contains("found") || err.toLowerCase().contains("function"),
+            "if not implemented, FE clear error; got=${err}")
+    }
 }

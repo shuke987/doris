@@ -1,8 +1,10 @@
-// JT-CAST-041: jsonb T_String → ARRAY 应拒绝（不嵌套解析）
+// JT-CAST-041 (HARD RULE): JSONB-string → ARRAY MUST reject (no nested parse)
 suite("repro_jt_cast_041") {
     boolean threw = false
-    try { sql "SELECT CAST(CAST('\"[1,2]\"' AS JSONB) AS ARRAY<INT>)" }
+    def r = null
+    try { r = sql "SELECT CAST(CAST('\"[1,2]\"' AS JSONB) AS ARRAY<INT>)" }
     catch (Exception e) { threw = true }
-    // either rejects or NULL non-strict
-    assertNotNull(threw, "JT-CAST-041 obs; threw=${threw}")
+    // spec: reject (strict) or NULL (non-strict); MUST NOT parse string scalar as array
+    assertTrue(threw || (r != null && r[0][0] == null),
+        "JT-CAST-041: CAST JSONB-string scalar → ARRAY MUST reject or return NULL (no nested parse); threw=${threw} r=${r}")
 }

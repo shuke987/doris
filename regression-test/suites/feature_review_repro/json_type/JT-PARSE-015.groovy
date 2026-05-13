@@ -1,10 +1,12 @@
-// JT-PARSE-015: 嵌套 array over limit
+// JT-PARSE-015 (HARD RULE): 200-level nested JSONB MUST be rejected (exceeds 100-layer writer limit)
 suite("repro_jt_parse_015") {
     String s = "[]"
     (1..200).each { s = "[${s}]" }
     boolean threw = false
-    try { sql "SELECT jsonb_parse('${s}')" }
+    def r = null
+    try { r = sql "SELECT jsonb_parse('${s}')" }
     catch (Exception e) { threw = true }
-    // 200 levels may or may not be over limit; lock observation
-    assertNotNull(threw, "JT-PARSE-015 obs; threw=${threw}")
+    // spec: writer limits to 100 layers; 200 must be rejected or NULL
+    assertTrue(threw || (r != null && r[0][0] == null),
+        "200-level nested JSONB MUST be rejected or return NULL; threw=${threw} r=${r}")
 }

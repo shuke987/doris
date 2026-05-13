@@ -1,4 +1,4 @@
-// JT-CMP-006: COUNT(DISTINCT JSONB)
+// JT-CMP-006 (HARD RULE): COUNT(DISTINCT JSONB) MUST reject (object types not in DISTINCT)
 suite("repro_jt_cmp_006") {
     sql "DROP TABLE IF EXISTS t_jt_cmp_006"
     try {
@@ -11,8 +11,7 @@ suite("repro_jt_cmp_006") {
         boolean threw = false
         try { sql "SELECT COUNT(DISTINCT j) FROM t_jt_cmp_006" }
         catch (Exception e) { threw = true }
-        // observe lock — JSONB usually not allowed in COUNT DISTINCT
-        assertNotNull(threw, "JT-CMP-006 obs; threw=${threw}")
+        assertEquals(true, threw, "COUNT(DISTINCT JSONB) MUST be rejected by FE; threw=${threw}")
     } finally {
         try { sql "DROP TABLE IF EXISTS t_jt_cmp_006" } catch (Exception ignore) {}
     }
